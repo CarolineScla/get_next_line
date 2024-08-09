@@ -9,77 +9,52 @@
 /*   Updated: 2024/08/06 14:27:28 by csclavon         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
 #include "get_next_line.h"
 
-#ifndef BUFFER_SIZE
-#define BUFFER_SIZE 32
-#endif
+char	*extract_line(char **leftover);
 
-static char *get_line(char **remainder)
+char	*get_next_line(int fd)
 {
-    char *newline_pos;
-    char *line;
-    char *temp;
+	static char *leftover = NULL;
+	char buffer[1];
+	ssize_t bytes_read;
+	char *newline_pos;
 
-    newline_pos = ft_strchr(*remainder, '\n');
-    if (newline_pos)
-    {
-        *newline_pos = '\0';
-        line = ft_strdup(*remainder);
-        temp = ft_strdup(newline_pos + 1);
-        free(*remainder);
-        *remainder = temp;
-    }
-    else
-    {
-        line = ft_strdup(*remainder);
-        free(*remainder);
-        *remainder = NULL;
-    }
-    return (line);
+	if (fd < 0)
+		return (NULL);
+
+	while ((bytes_read = read(fd, buffer, 1)) > 0) {
+		buffer[bytes_read] = '\0';
+		char *temp = ft_strjoin(leftover ? leftover : "", buffer);
+		free(leftover);
+		leftover = temp;
+		newline_pos = ft_strchr(leftover, '\n');
+		if (newline_pos)
+			break;
+	}
+
+	if (bytes_read < 0 || (bytes_read == 0 && (!leftover || !*leftover)))
+		return (NULL);
+
+	char *line = extract_line(&leftover);
+	return (line);
 }
 
-static int read_to_remainder(int fd, char **remainder)
+char	*extract_line(char **leftover)
 {
-    char buffer[BUFFER_SIZE + 1];
-    char *temp;
-    int bytes_read;
+	char *line;
+	char *newline_pos;
 
-    bytes_read = read(fd, buffer, BUFFER_SIZE);
-    while (bytes_read > 0)
-    {
-        buffer[bytes_read] = '\0';
-        if (*remainder)
-        {
-            temp = ft_strjoin(*remainder, buffer);
-            free(*remainder);
-            *remainder = temp;
-        }
-        else
-        {
-            *remainder = ft_strdup(buffer);
-        }
-        if (ft_strchr(buffer, '\n'))
-            break;
-        bytes_read = read(fd, buffer, BUFFER_SIZE);
-    }
-    return (bytes_read);
-}
-
-char *get_next_line(int fd)
-{
-    static char *remainder;
-    int bytes_read;
-    char *line;
-
-    if (fd < 0 || BUFFER_SIZE <= 0)
-        return (NULL);
-    bytes_read = read_to_remainder(fd, &remainder);
-    if (bytes_read < 0)
-        return (NULL);
-    if (bytes_read == 0 && (!remainder || *remainder == '\0'))
-        return (NULL);
-    line = get_line(&remainder);
-    return (line);
+	newline_pos = ft_strchr(*leftover, '\n');
+	if (newline_pos) {
+		line = ft_substr(*leftover, 0, newline_pos - *leftover + 1);
+		char *new_leftover = ft_strdup(newline_pos + 1);
+		free(*leftover);
+		*leftover = new_leftover;
+	} else {
+		line = ft_strdup(*leftover);
+		free(*leftover);
+		*leftover = NULL;
+	}
+	return (line);
 }
